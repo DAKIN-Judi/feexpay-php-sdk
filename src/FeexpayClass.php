@@ -52,14 +52,12 @@ class FeexpayClass
         } catch (\Throwable $th) {
             echo "Id Request not send";
         }
-
-
     }
+
     public function paiementLocal(float $amount, string $phoneNumber, string $operatorName, string $fullname, string $email)
     {
         function curl_post($url, array $post = null, array $options = array())
         {
-
             $defaults = array(
 
                 CURLOPT_POST => 1,
@@ -111,15 +109,12 @@ class FeexpayClass
                 } else {
                     return $responseCurlPostPaiementData->reference;
                 }
-
             } catch (\Throwable $th) {
                 echo "Request Not Send";
             }
-
         } else {
             return false;
         }
-
     }
 
     public function paiementCard(
@@ -137,7 +132,6 @@ class FeexpayClass
     {
         function curl_post($url, array $post = null, array $options = array())
         {
-
             $defaults = array(
 
                 CURLOPT_POST => 1,
@@ -172,13 +166,11 @@ class FeexpayClass
             curl_close($ch);
 
             return $result;
-
         }
 
         $responseIdGet = $this->getIdAndMarchanName();
         $nameMarchandExist = isset($responseIdGet->name);
         if ($nameMarchandExist == true) {
-
             try {
                 $post = array(
                     "phone" => $phoneNumber,
@@ -199,20 +191,25 @@ class FeexpayClass
 
                 if ($responseCurlPostPaiementData->status == "FAILED") {
                     echo "Une erreur s'est produite";
-                } else {
+                }
+                elseif (isset($responseCurlPostPaiementData->url)) {
                     $result = [
                         'url' => $responseCurlPostPaiementData->url,
                         'reference' => $responseCurlPostPaiementData->transref,
                     ];
                     return $result;
                 }
+                else {
+                    echo "Réponse inattendue de l'API";
+                }
 
-            } catch (\Throwable $th) {
+            }
+            catch (\Throwable $th) {
                 echo "Erreur inattendue : " . $th->getMessage();
                 echo "Request Not Send";
             }
-
-        } else {
+        }
+        else {
             return false;
         }
 
@@ -220,7 +217,6 @@ class FeexpayClass
 
     public function getPaiementStatus($paiementRef)
     {
-
         try {
             $curlGetPaiementWithReference = curl_init("https://api.feexpay.me/api/transactions/getrequesttopay/integration/$paiementRef");
             curl_setopt($curlGetPaiementWithReference, CURLOPT_CAINFO, __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt');
@@ -228,14 +224,22 @@ class FeexpayClass
             $responseCurlStatus = curl_exec($curlGetPaiementWithReference);
             $statusData = json_decode($responseCurlStatus);
             curl_close($curlGetPaiementWithReference);
-            $payer = $statusData->payer;
-            $responseSendArray = array("amount"=>$statusData->amount,"clientNum"=>$payer->partyId,"status"=>$statusData->status);
 
-            return $responseSendArray;
-        } catch (\Throwable $th) {
+            if (isset($statusData->status)) {
+                $payer = $statusData->payer;
+                $responseSendArray = array(
+                    "amount"=>$statusData->amount,
+                    "clientNum"=>$payer->partyId,
+                    "status"=>$statusData->status
+                );
+                return $responseSendArray;
+            }
+            else {
+                echo "Réponse inattendue de l'API";
+            }
+        }
+        catch (\Throwable $th) {
             echo "Get Status Request Not Send";
         }
-
     }
-
 }
