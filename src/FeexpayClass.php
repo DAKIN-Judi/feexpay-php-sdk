@@ -20,7 +20,7 @@ class FeexpayClass
 
     }
 
-    public function init($amount, $componentId, $custom_button_id = "", $use_custom_button = false, $description = ""){
+    public function init($amount, $componentId, $use_custom_button = false, $custom_button_id = "",  $description = ""){
         $token = $this->token;
         $id = $this->id;
         $callback_url = $this->callback_url;
