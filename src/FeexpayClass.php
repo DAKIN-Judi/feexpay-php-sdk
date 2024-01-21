@@ -20,7 +20,7 @@ class FeexpayClass
 
     }
 
-    public function init($amount, $componentId, $use_custom_button = false, $custom_button_id = "",  $description = ""){
+    public function init($amount, $componentId, $use_custom_button = false, $custom_button_id = "",  $description = "", $callback_info=""){
         $token = $this->token;
         $id = $this->id;
         $callback_url = $this->callback_url;
@@ -37,7 +37,8 @@ class FeexpayClass
              mode: 'LIVE',
              custom_button: '$use_custom_button',
             id_custom_button: '$custom_button_id',
-            description: '$description'
+            description: '$description',
+            callback_info: '$callback_info',
          })
         </script>";
     }
@@ -57,7 +58,7 @@ class FeexpayClass
         }
     }
 
-    public function paiementLocal(float $amount, string $phoneNumber, string $operatorName, string $fullname, string $email)
+    public function paiementLocal(float $amount, string $phoneNumber, string $operatorName, string $fullname, string $email, string $callback_info)
     {
         function curl_post($url, array $post = null, array $options = array())
         {
@@ -103,8 +104,9 @@ class FeexpayClass
         if ($nameMarchandExist == true) {
 
             try {
-                $post = array("phoneNumber" => $phoneNumber, "amount" => $amount, "reseau" => $operatorName, "token" => $this->token, "shop" => $this->id, "first_name" => $fullname, "email" => $email);
+                $post = array("phoneNumber" => $phoneNumber, "amount" => $amount, "reseau" => $operatorName, "token" => $this->token, "shop" => $this->id, "first_name" => $fullname, "email" => $email, "callback_info" => $callback_info);
                 $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/requesttopay/integration", $post);
+//                $responseCurlPostPaiement = curl_post("http://127.0.0.1:4005/api/transactions/requesttopay/integration", $post);
                 $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
 
                 if ($responseCurlPostPaiementData->status == "FAILED") {
@@ -130,7 +132,8 @@ class FeexpayClass
         string $country,
         string $address,
         string $district,
-        string $currency
+        string $currency,
+        string $callback_info
     )
     {
         function curl_post($url, array $post = null, array $options = array())
@@ -187,8 +190,10 @@ class FeexpayClass
                     "country" => $country,
                     "address1" => $address,
                     "district" => $district,
-                    "currency" => $currency
+                    "currency" => $currency,
+                    "callback_info" => $callback_info
                 );
+//                $responseCurlPostPaiement = curl_post("http://127.0.0.1:4005/api/transactions/card/inittransact/integration", $post);
                 $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/card/inittransact/integration", $post);
                 $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
 
