@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace Feexpay\FeexpayPhp;
 
-class FeexpayClass
+class FeexpayClassb
 {
     /**
      * Create a new Skeleton Instance
+     * @param $id
+     * @param $token
+     * @param $callback_url
+     * @param $mode
      */
 
     public function __construct($id,$token,$callback_url,$mode)
