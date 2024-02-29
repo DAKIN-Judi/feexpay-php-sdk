@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Feexpay\FeexpayPhp;
 
-class FeexpayClassb
+class FeexpayClass
 {
     /**
      * Create a new Skeleton Instance
@@ -110,7 +110,6 @@ class FeexpayClassb
             try {
                 $post = array("phoneNumber" => $phoneNumber, "amount" => $amount, "reseau" => $operatorName, "token" => $this->token, "shop" => $this->id, "first_name" => $fullname, "email" => $email, "callback_info" => $callback_info);
                 $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/requesttopay/integration", $post);
-//                $responseCurlPostPaiement = curl_post("http://127.0.0.1:4005/api/transactions/requesttopay/integration", $post);
                 $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
 
                 if ($responseCurlPostPaiementData->status == "FAILED") {
@@ -197,7 +196,6 @@ class FeexpayClassb
                     "currency" => $currency,
                     "callback_info" => $callback_info
                 );
-//                $responseCurlPostPaiement = curl_post("http://127.0.0.1:4005/api/transactions/card/inittransact/integration", $post);
                 $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/card/inittransact/integration", $post);
                 $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
 
