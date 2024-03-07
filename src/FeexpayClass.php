@@ -62,7 +62,7 @@ class FeexpayClass
         }
     }
 
-    public function paiementLocal(float $amount, string $phoneNumber, string $operatorName, string $fullname, string $email, string $callback_info)
+    public function paiementLocal(float $amount, string $phoneNumber, string $operatorName, string $fullname, string $email, string $callback_info, string $custom_id)
     {
         function curl_post($url, array $post = null, array $options = array())
         {
@@ -108,7 +108,7 @@ class FeexpayClass
         if ($nameMarchandExist == true) {
 
             try {
-                $post = array("phoneNumber" => $phoneNumber, "amount" => $amount, "reseau" => $operatorName, "token" => $this->token, "shop" => $this->id, "first_name" => $fullname, "email" => $email, "callback_info" => $callback_info);
+                $post = array("phoneNumber" => $phoneNumber, "amount" => $amount, "reseau" => $operatorName, "token" => $this->token, "shop" => $this->id, "first_name" => $fullname, "email" => $email, "callback_info" => $callback_info, "reference" => $custom_id);
                 $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/requesttopay/integration", $post);
                 $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
 
@@ -136,7 +136,8 @@ class FeexpayClass
         string $address,
         string $district,
         string $currency,
-        string $callback_info
+        string $callback_info,
+        string $custom_id
     )
     {
         function curl_post($url, array $post = null, array $options = array())
@@ -194,7 +195,8 @@ class FeexpayClass
                     "address1" => $address,
                     "district" => $district,
                     "currency" => $currency,
-                    "callback_info" => $callback_info
+                    "callback_info" => $callback_info,
+                    "reference" => $custom_id
                 );
                 $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/card/inittransact/integration", $post);
                 $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
