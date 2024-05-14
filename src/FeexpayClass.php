@@ -11,15 +11,17 @@ class FeexpayClass
      * @param $id
      * @param $token
      * @param $callback_url
+     * @param $error_callback_url
      * @param $mode
      */
 
-    public function __construct($id,$token,$callback_url,$mode)
+    public function __construct($id,$token,$callback_url,$mode='LIVE', $error_callback_url = '')
     {
         // constructor body
         $this->id = $id;
         $this->token = $token;
         $this->callback_url = $callback_url;
+        $this->error_callback_url = $error_callback_url;
         $this->mode = $mode;
 
     }
@@ -28,6 +30,7 @@ class FeexpayClass
         $token = $this->token;
         $id = $this->id;
         $callback_url = $this->callback_url;
+        $error_callback_url = $this->error_callback_url;
 
         echo "
         <script src='https://api.feexpay.me/feexpay-javascript-sdk/index.js'></script>
@@ -43,6 +46,7 @@ class FeexpayClass
             id_custom_button: '$custom_button_id',
             description: '$description',
             callback_info: '$callback_info',
+            error_callback_url: '$error_callback_url',
          })
         </script>";
     }
