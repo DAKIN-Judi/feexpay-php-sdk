@@ -116,11 +116,7 @@ class FeexpayClass
                 $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/requesttopay/integration", $post);
                 $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
 
-                if ($responseCurlPostPaiementData->status == "FAILED") {
-                    echo "Paramètres incorrects";
-                } else {
-                    return $responseCurlPostPaiementData->reference;
-                }
+                return $responseCurlPostPaiementData->reference;
             } catch (\Throwable $th) {
                 echo "Request Not Send";
             }
