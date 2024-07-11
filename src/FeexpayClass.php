@@ -109,7 +109,7 @@ class FeexpayClass
 
         $responseIdGet = $this->getIdAndMarchanName();
         $nameMarchandExist = isset($responseIdGet->name);
-        if ($nameMarchandExist == true) {
+//        if ($nameMarchandExist == true) {
 
             try {
                 $post = array("phoneNumber" => $phoneNumber, "amount" => $amount, "reseau" => $operatorName, "token" => $this->token, "shop" => $this->id, "first_name" => $fullname, "email" => $email, "callback_info" => $callback_info, "reference" => $custom_id, "otp" =>$otp);
@@ -120,9 +120,9 @@ class FeexpayClass
             } catch (\Throwable $th) {
                 echo "Request Not Send";
             }
-        } else {
-            return false;
-        }
+//        } else {
+//            return false;
+//        }
     }
 
     public function requestToPayWeb(float $amount, string $phoneNumber, string $operatorName, string $fullname, string $email, string $callback_info, string $custom_id, string $cancel_url="", string $return_url="")
@@ -239,7 +239,7 @@ class FeexpayClass
 
         $responseIdGet = $this->getIdAndMarchanName();
         $nameMarchandExist = isset($responseIdGet->name);
-        if ($nameMarchandExist == true) {
+//        if ($nameMarchandExist == true) {
             try {
                 $post = array(
                     "phone" => $phoneNumber,
@@ -279,10 +279,10 @@ class FeexpayClass
                 echo "Erreur inattendue : " . $th->getMessage();
                 echo "Request Not Send";
             }
-        }
-        else {
-            return false;
-        }
+//        }
+//        else {
+//            return false;
+//        }
 
     }
 
