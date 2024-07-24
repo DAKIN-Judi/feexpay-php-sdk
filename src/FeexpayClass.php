@@ -84,7 +84,7 @@ class FeexpayClass
 
                 CURLOPT_FORBID_REUSE => 1,
 
-                CURLOPT_TIMEOUT => 4,
+                //CURLOPT_TIMEOUT => 4,
 
                 CURLOPT_POSTFIELDS => http_build_query($post),
                 CURLOPT_CAINFO => __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt',
@@ -109,20 +109,16 @@ class FeexpayClass
 
         $responseIdGet = $this->getIdAndMarchanName();
         $nameMarchandExist = isset($responseIdGet->name);
-//        if ($nameMarchandExist == true) {
 
-            try {
-                $post = array("phoneNumber" => $phoneNumber, "amount" => $amount, "reseau" => $operatorName, "token" => $this->token, "shop" => $this->id, "first_name" => $fullname, "email" => $email, "callback_info" => $callback_info, "reference" => $custom_id, "otp" =>$otp);
-                $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/requesttopay/integration", $post);
-                $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
+        try {
+            $post = array("phoneNumber" => $phoneNumber, "amount" => $amount, "reseau" => $operatorName, "token" => $this->token, "shop" => $this->id, "first_name" => $fullname, "email" => $email, "callback_info" => $callback_info, "reference" => $custom_id, "otp" =>$otp);
+            $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/requesttopay/integration", $post);
+            $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
 
-                return $responseCurlPostPaiementData->reference;
-            } catch (\Throwable $th) {
-                echo "Request Not Send";
-            }
-//        } else {
-//            return false;
-//        }
+            return $responseCurlPostPaiementData->reference;
+        } catch (\Throwable $th) {
+            echo "Request Not Send";
+        }
     }
 
     public function requestToPayWeb(float $amount, string $phoneNumber, string $operatorName, string $fullname, string $email, string $callback_info, string $custom_id, string $cancel_url="", string $return_url="")
@@ -239,6 +235,8 @@ class FeexpayClass
 
         $responseIdGet = $this->getIdAndMarchanName();
         $nameMarchandExist = isset($responseIdGet->name);
+        $systemCardPay = isset($responseIdGet->systemCardPay);
+        echo $systemCardPay;
 //        if ($nameMarchandExist == true) {
             try {
                 $post = array(
@@ -255,10 +253,13 @@ class FeexpayClass
                     "district" => $district,
                     "currency" => $currency,
                     "callback_info" => $callback_info,
-                    "reference" => $custom_id
+                    "reference" => $custom_id,
+                    "systemCardPay" => $systemCardPay,
                 );
                 $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/card/inittransact/integration", $post);
                 $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
+                
+                echo $responseCurlPostPaiementData;
 
                 if ($responseCurlPostPaiementData->status == "FAILED") {
                     echo "Une erreur s'est produite";
@@ -266,7 +267,7 @@ class FeexpayClass
                 elseif (isset($responseCurlPostPaiementData->url)) {
                     $result = [
                         'url' => $responseCurlPostPaiementData->url,
-                        'reference' => $responseCurlPostPaiementData->transref,
+                        'reference' => $responseCurlPostPaiementData->reference,
                     ];
                     return $result;
                 }
@@ -296,18 +297,19 @@ class FeexpayClass
             $statusData = json_decode($responseCurlStatus);
             curl_close($curlGetPaiementWithReference);
 
-            if (isset($statusData->status)) {
-                $payer = $statusData->payer;
-                $responseSendArray = array(
-                    "amount"=>$statusData->amount,
-                    "clientNum"=>$payer->partyId,
-                    "status"=>$statusData->status
-                );
-                return $responseSendArray;
-            }
+            //if (isset($statusData->status)) {
+            $payer = $statusData->payer;
+            $responseSendArray = array(
+                "amount"=>$statusData->amount,
+                "clientNum"=>$payer->partyId,
+                "status"=>$statusData->status,
+                "reference"=>$statusData->reference
+            );
+            return $responseSendArray;
+           /*  }
             else {
                 echo "Réponse inattendue de l'API";
-            }
+            } */
         }
         catch (\Throwable $th) {
             echo "Get Status Request Not Send";
