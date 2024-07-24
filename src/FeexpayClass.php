@@ -235,9 +235,9 @@ class FeexpayClass
 
         $responseIdGet = $this->getIdAndMarchanName();
         $nameMarchandExist = isset($responseIdGet->name);
-        $systemCardPay = isset($responseIdGet->systemCardPay);
-        echo $systemCardPay;
-//        if ($nameMarchandExist == true) {
+        $systemCardPay = $responseIdGet->systemCardPay;
+
+        //        if ($nameMarchandExist == true) {
             try {
                 $post = array(
                     "phone" => $phoneNumber,
@@ -259,12 +259,12 @@ class FeexpayClass
                 $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/card/inittransact/integration", $post);
                 $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
                 
-                echo $responseCurlPostPaiementData;
+                /* echo $responseCurlPostPaiementData;
 
                 if ($responseCurlPostPaiementData->status == "FAILED") {
                     echo "Une erreur s'est produite";
-                }
-                elseif (isset($responseCurlPostPaiementData->url)) {
+                } */
+                if (isset($responseCurlPostPaiementData->url)) {
                     $result = [
                         'url' => $responseCurlPostPaiementData->url,
                         'reference' => $responseCurlPostPaiementData->reference,
