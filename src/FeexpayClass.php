@@ -224,7 +224,9 @@ class FeexpayClass
 
             curl_setopt_array($ch, ($options + $defaults));
 
-            if (!$result = curl_exec($ch)) {
+            $result = curl_exec($ch);
+
+            if (!$result) {
 
                 trigger_error(curl_error($ch));
 
