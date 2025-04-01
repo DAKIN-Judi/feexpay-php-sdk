@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 namespace Feexpay\FeexpayPhp;
+use Illuminate\Support\Facades\Log;
 
 class FeexpayClass
 {
