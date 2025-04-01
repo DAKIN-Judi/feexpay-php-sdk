@@ -118,6 +118,9 @@ class FeexpayClass
         $nameMarchandExist = isset($responseIdGet->name);
 
         try {
+
+            Log::info(['show phoneNumber' => $phoneNumber, "reseau" => $operatorName, "amount" => $amount]);
+
             $post = array("phoneNumber" => $phoneNumber, "amount" => $amount, "reseau" => $operatorName, "token" => $this->token, "shop" => $this->id, "first_name" => $fullname, "email" => $email, "callback_info" => $callback_info, "reference" => $custom_id, "otp" =>$otp);
             $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/requesttopay/integration", $post);
             $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
