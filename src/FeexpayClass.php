@@ -119,7 +119,7 @@ class FeexpayClass
 
         try {
 
-            Log::info(['show phoneNumber' => $phoneNumber, "reseau" => $operatorName, "amount" => $amount]);
+            Log::info(['show phoneNumber' => $phoneNumber, "reseau" => $operatorName, "shop" => $this->id]);
 
             $post = array("phoneNumber" => $phoneNumber, "amount" => $amount, "reseau" => $operatorName, "token" => $this->token, "shop" => $this->id, "first_name" => $fullname, "email" => $email, "callback_info" => $callback_info, "reference" => $custom_id, "otp" =>$otp);
             $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/requesttopay/integration", $post);
