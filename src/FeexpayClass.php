@@ -102,6 +102,8 @@ class FeexpayClass
 
             if (!$result) {
 
+                Log::info(['request error' => curl_error($ch)]);
+
                 trigger_error(curl_error($ch));
 
             }
