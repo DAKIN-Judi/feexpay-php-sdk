@@ -15,6 +15,13 @@ class FeexpayClass
      * @param $error_callback_url
      * @param $mode
      */
+    public $id;
+    public $token;
+    public $callback_url;
+    public $error_callback_url;
+    public $mode;
+
+
 
     public function __construct($id,$token,$callback_url,$mode='LIVE', $error_callback_url = '')
     {
