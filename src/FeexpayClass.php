@@ -86,7 +86,7 @@ class FeexpayClass
                 CURLOPT_FORBID_REUSE => 1,
 
                 //CURLOPT_TIMEOUT => 4,
-
+                CURLOPT_SSL_VERIFYPEER => false,
                 CURLOPT_POSTFIELDS => http_build_query($post),
                 CURLOPT_CAINFO => __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt',
 
