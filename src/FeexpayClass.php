@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Feexpay\FeexpayPhp;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
+use RuntimeException;
 
 class FeexpayClass
 {
@@ -76,49 +78,84 @@ class FeexpayClass
 
     public function paiementLocal(float $amount, string $phoneNumber, string $operatorName, string $fullname, string $email, string $callback_info, string $custom_id, string $otp="")
     {
-        function curl_post($url, array $post = null, array $options = array())
+        function curl_post(string $url, ?array $post = null, array $options = []): string
         {
-            $defaults = array(
+            if (!filter_var($url, FILTER_VALIDATE_URL)) {
+                throw new InvalidArgumentException("URL invalide: " . $url);
+            }
 
-                CURLOPT_POST => 1,
-
-                CURLOPT_HEADER => 0,
-
+            $defaults = [
                 CURLOPT_URL => $url,
-
-                CURLOPT_FRESH_CONNECT => 1,
-
-                CURLOPT_RETURNTRANSFER => 1,
-
-                CURLOPT_FORBID_REUSE => 1,
-
-                //CURLOPT_TIMEOUT => 4,
-                CURLOPT_SSL_VERIFYPEER => false,
-                CURLOPT_POSTFIELDS => http_build_query($post),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FRESH_CONNECT => true,
+                CURLOPT_FORBID_REUSE => true,
+                CURLOPT_HEADER => false,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_CAINFO => __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt',
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_FAILONERROR => true,
+            ];
 
-            );
+            if ($post !== null) {
+                $defaults[CURLOPT_POST] = true;
+                $defaults[CURLOPT_POSTFIELDS] = http_build_query($post);
+                $defaults[CURLOPT_HTTPHEADER] = [
+                    'Content-Type: application/x-www-form-urlencoded',
+                    'Accept: application/json'
+                ];
+            }
 
+            // Fusion des options
+            $options = $options + $defaults;
+
+            // Initialisation cURL
             $ch = curl_init();
+            if ($ch === false) {
+                throw new RuntimeException("Échec de l'initialisation cURL");
+            }
 
-            curl_setopt_array($ch, ($options + $defaults));
+            // Configuration des options
+            if (!curl_setopt_array($ch, $options)) {
+                $error = curl_error($ch);
+                curl_close($ch);
+                throw new RuntimeException("Échec de la configuration cURL: " . $error);
+            }
 
+            // Exécution de la requête
             $result = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $error = curl_error($ch);
 
-            Log::info(['result returned' => $result]);
+            // Journalisation détaillée
+            Log::info('Requête cURL', [
+                'url' => $url,
+                'params' => $post,
+                'http_code' => $httpCode,
+                'response' => $result,
+                'error' => $error
+            ]);
 
-            if (!$result) {
+            // Gestion des erreurs
+            if ($result === false) {
+                $errorMsg = sprintf(
+                    "Erreur cURL [%d]: %s",
+                    curl_errno($ch),
+                    $error
+                );
+                curl_close($ch);
+                throw new RuntimeException($errorMsg);
+            }
 
-                Log::info(['request error' => curl_error($ch)]);
-
-                trigger_error(curl_error($ch));
-
+            // Vérification du code HTTP
+            if ($httpCode >= 400) {
+                curl_close($ch);
+                throw new RuntimeException("Réponse HTTP non valide: " . $httpCode);
             }
 
             curl_close($ch);
-
             return $result;
-
         }
 
         $responseIdGet = $this->getIdAndMarchanName();
