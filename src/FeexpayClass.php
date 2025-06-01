@@ -38,6 +38,7 @@ class FeexpayClass
             'timeout' => 30,
             'headers' => [
                 'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
             ]
         ]);
     }
@@ -83,9 +84,9 @@ class FeexpayClass
     {
         try {
             $response = $this->httpClient->post($endpoint, [
-                'form_params' => $data,
+                'json' => $data, // Utilisation de 'json' au lieu de 'form_params'
                 'headers' => [
-                    'Content-Type' => 'application/x-www-form-urlencoded',
+                    'Authorization' => 'Bearer ' . $this->token, // Ajout du token dans le header si nécessaire
                 ]
             ]);
 
@@ -93,6 +94,11 @@ class FeexpayClass
 
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new RuntimeException("Invalid JSON response from API");
+            }
+
+            if (!isset($responseData->success) || !$responseData->success) {
+                $errorMsg = $responseData->message ?? 'Unknown error from API';
+                throw new RuntimeException("API Error: " . $errorMsg);
             }
 
             return $responseData;
@@ -117,7 +123,7 @@ class FeexpayClass
         string $otp = ""
     ): string {
         try {
-            $operatorName = str_replace(' ', '', $operatorName); // Nettoyage du nom d'opérateur
+            $operatorName = str_replace(' ', '', $operatorName);
 
             $responseData = $this->makeApiRequest('/api/transactions/requesttopay/integration', [
                 'phoneNumber' => $phoneNumber,
@@ -172,7 +178,7 @@ class FeexpayClass
             ]);
 
             if ($responseData->status === "FAILED") {
-                throw new RuntimeException("Incorrect parameters");
+                throw new RuntimeException("Incorrect parameters: " . ($responseData->message ?? ''));
             }
 
             return [
@@ -223,7 +229,7 @@ class FeexpayClass
             ]);
 
             if (!isset($responseData->url)) {
-                throw new RuntimeException("Unexpected API response");
+                throw new RuntimeException("Unexpected API response: " . ($responseData->message ?? ''));
             }
 
             return [
@@ -239,15 +245,25 @@ class FeexpayClass
     public function getPaiementStatus(string $paiementRef): array
     {
         try {
-            $response = $this->httpClient->get("/api/transactions/getrequesttopay/integration/$paiementRef");
+            $response = $this->httpClient->get("/api/transactions/getrequesttopay/integration/$paiementRef", [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->token,
+                ]
+            ]);
+
             $statusData = json_decode($response->getBody()->getContents());
 
-            $payer = $statusData->payer;
+            if (!isset($statusData->status)) {
+                throw new RuntimeException("Invalid payment status response");
+            }
+
+            $payer = $statusData->payer ?? (object)['partyId' => 'N/A'];
+
             return [
-                "amount" => $statusData->amount,
+                "amount" => $statusData->amount ?? 0,
                 "clientNum" => $payer->partyId,
                 "status" => $statusData->status,
-                "reference" => $statusData->reference
+                "reference" => $statusData->reference ?? $paiementRef
             ];
         } catch (GuzzleException $e) {
             Log::error("Failed to get payment status", ['reference' => $paiementRef, 'error' => $e->getMessage()]);
