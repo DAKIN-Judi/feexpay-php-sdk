@@ -39,10 +39,26 @@ class FeexpayClass
         ]);
     }
 
+    private function arrayToJsonString(array $data): string
+    {
+        $jsonParts = [];
+        foreach ($data as $key => $value) {
+            $escapedValue = addslashes((string) $value);
+            $jsonParts[] = "\"$key\": \"$escapedValue\"";
+        }
+        return '{' . implode(', ', $jsonParts) . '}';
+    }
+
+
     private function makeJsonRequest(string $method, string $endpoint, array $data): array
     {
-        $body = json_encode($data);
-        if ($body === false) {
+        $body = $this->arrayToJsonString($data);
+
+        Log::debug('API Response', [
+                'endpoint' => $endpoint,
+        ]);
+
+        if (!$body) {
             throw new RuntimeException("Failed to encode JSON body: " . json_last_error_msg());
         }
 
