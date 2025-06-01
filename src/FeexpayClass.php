@@ -55,7 +55,7 @@ class FeexpayClass
         $body = $this->arrayToJsonString($data);
 
         Log::debug('API data sent', [
-                'data' => $data,
+                'data' => $body,
         ]);
 
         if (!$body) {
