@@ -58,6 +58,8 @@ class FeexpayClass
                 'data' => $body,
         ]);
 
+        // vs
+
         if (!$body) {
             throw new RuntimeException("Failed to encode JSON body: " . json_last_error_msg());
         }
