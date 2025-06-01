@@ -3,213 +3,335 @@
 declare(strict_types=1);
 
 namespace Feexpay\FeexpayPhp;
-
-use GuzzleHttp\Client;
-use GuzzleHttp\Psr7\Request;
-use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Facades\Log;
-use RuntimeException;
 
 class FeexpayClass
 {
-    private Client $httpClient;
-    public string $id;
-    public string $token;
-    public string $callback_url;
-    public string $error_callback_url;
-    public string $mode;
+    /**
+     * Create a new Skeleton Instance
+     * @param $id
+     * @param $token
+     * @param $callback_url
+     * @param $error_callback_url
+     * @param $mode
+     */
+    public $id;
+    public $token;
+    public $callback_url;
+    public $error_callback_url;
+    public $mode;
 
-    public function __construct(
-        string $id,
-        string $token,
-        string $callback_url,
-        string $mode = 'LIVE',
-        string $error_callback_url = ''
-    ) {
+
+
+    public function __construct($id,$token,$callback_url,$mode='LIVE', $error_callback_url = '')
+    {
+        // constructor body
         $this->id = $id;
         $this->token = $token;
         $this->callback_url = $callback_url;
         $this->error_callback_url = $error_callback_url;
         $this->mode = $mode;
 
-        $this->httpClient = new Client([
-            'base_uri' => 'https://api.feexpay.me',
-            'verify' => __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt',
-            'timeout' => 30
-        ]);
     }
 
-    private function arrayToJsonString(array $data): string
-    {
-        $jsonParts = [];
-        foreach ($data as $key => $value) {
-            $escapedValue = addslashes((string) $value);
-            $jsonParts[] = "\"$key\": \"$escapedValue\"";
-        }
-        return '{' . implode(', ', $jsonParts) . '}';
+    public function init($amount, $componentId, $use_custom_button = false, $custom_button_id = "",  $description = "", $callback_info=""){
+        $token = $this->token;
+        $id = $this->id;
+        $callback_url = $this->callback_url;
+        $error_callback_url = $this->error_callback_url;
+
+        echo "
+        <script src='https://api.feexpay.me/feexpay-javascript-sdk/index.js'></script>
+        <script type='text/javascript'>
+
+        FeexPayButton.init('$componentId',{
+             id:'$id',
+             amount:$amount,
+             token:'$token',
+             callback_url:'$callback_url',
+             mode: 'LIVE',
+             custom_button: '$use_custom_button',
+            id_custom_button: '$custom_button_id',
+            description: '$description',
+            callback_info: '$callback_info',
+            error_callback_url: '$error_callback_url',
+         })
+        </script>";
     }
 
-
-    private function makeJsonRequest(string $method, string $endpoint, array $data): array
+    public function getIdAndMarchanName()
     {
-        $body = $this->arrayToJsonString($data);
-
-        Log::debug('API data sent', [
-                'data' => $body,
-        ]);
-
-        // vs
-
-        if (!$body) {
-            throw new RuntimeException("Failed to encode JSON body: " . json_last_error_msg());
-        }
-
-        $headers = [
-            'Content-Type' => 'application/json',
-            'Accept' => 'application/json'
-        ];
-
-        $request = new Request($method, $endpoint, $headers, $body);
-
         try {
-            $response = $this->httpClient->send($request);
-            $responseData = json_decode($response->getBody()->getContents(), true);
-
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new RuntimeException("Invalid JSON response: " . json_last_error_msg());
-            }
-
-            Log::debug('API Response', [
-                'endpoint' => $endpoint,
-                'status' => $response->getStatusCode(),
-                'response' => $responseData
-            ]);
-
+            $curl = curl_init("https://api.feexpay.me/api/shop/$this->id/get_shop");
+            curl_setopt($curl, CURLOPT_CAINFO, __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt');
+            curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+            $responseCurl = curl_exec($curl);
+            $responseData = json_decode($responseCurl);
+            curl_close($curl);
             return $responseData;
-        } catch (GuzzleException $e) {
-            $errorResponse = $e->hasResponse() ? $e->getResponse()->getBody()->getContents() : 'No response';
-            Log::error("API request failed", [
-                'endpoint' => $endpoint,
-                'error' => $e->getMessage(),
-                'response' => $errorResponse,
-                'data' => $data
-            ]);
-            throw new RuntimeException("API request failed: " . $e->getMessage());
+        } catch (\Throwable $th) {
+            echo "Id Request not send";
         }
     }
 
-    public function paiementLocal(
-        float $amount,
-        string $phoneNumber,
-        string $operatorName,
-        string $fullname,
-        string $email,
-        string $callback_info,
-        string $custom_id,
-        string $otp = ""
-    ): string {
-        $data = [
-            'shop' => $this->id,
-            'token' => $this->token,
-            'callback_url' => $this->callback_url,
-            'error_callback_url' => $this->error_callback_url,
-            'mode' => $this->mode,
-            'first_name' => $fullname,
-            'email' => $email,
-            'phoneNumber' => $phoneNumber,
-            'reseau' => $operatorName,
-            'amount' => $amount,
-            'callback_info' => $callback_info,
-            'reference' => $custom_id,
-            'otp' => $otp
-        ];
-
-        $responseData = $this->makeJsonRequest(
-            'POST',
-            '/api/transactions/requesttopay/integration',
-            $data
-        );
-
-        if (!isset($responseData['reference'])) {
-            throw new RuntimeException("Missing reference in API response: " . json_encode($responseData));
-        }
-
-        return $responseData['reference'];
-    }
-
-    public function requestToPayWeb(
-        float $amount,
-        string $phoneNumber,
-        string $operatorName,
-        string $fullname,
-        string $email,
-        string $callback_info,
-        string $custom_id,
-        string $cancel_url = "",
-        string $return_url = ""
-    ): array {
-        $data = [
-            'shop' => $this->id,
-            'token' => $this->token,
-            'callback_url' => $this->callback_url,
-            'error_callback_url' => $this->error_callback_url,
-            'mode' => $this->mode,
-            'first_name' => $fullname,
-            'email' => $email,
-            'phoneNumber' => $phoneNumber,
-            'reseau' => $operatorName,
-            'amount' => $amount,
-            'callback_info' => $callback_info,
-            'reference' => $custom_id,
-            'return_url' => $return_url,
-            'cancel_url' => $cancel_url
-        ];
-
-        $responseData = $this->makeJsonRequest(
-            'POST',
-            '/api/transactions/requesttopay/integration',
-            $data
-        );
-
-        if (isset($responseData['status']) && $responseData['status'] === "FAILED") {
-            throw new RuntimeException($responseData['message'] ?? "Payment failed");
-        }
-
-        if (!isset($responseData['payment_url'])) {
-            throw new RuntimeException("Missing payment_url in API response: " . json_encode($responseData));
-        }
-
-        return [
-            'payment_url' => $responseData['payment_url'],
-            'reference' => $responseData['reference'],
-            'order_id' => $responseData['order_id'] ?? null
-        ];
-    }
-
-    public function getPaiementStatus(string $paiementRef): array
+    public function paiementLocal(float $amount, string $phoneNumber, string $operatorName, string $fullname, string $email, string $callback_info, string $custom_id, string $otp="")
     {
-        try {
-            $response = $this->httpClient->get("/api/transactions/getrequesttopay/integration/$paiementRef");
-            $statusData = json_decode($response->getBody()->getContents(), true);
+        function curl_post($url, array $post = null, array $options = array())
+        {
+            $defaults = array(
 
-            if (!isset($statusData['status'])) {
-                throw new RuntimeException("Invalid payment status response");
+                CURLOPT_POST => 1,
+
+                CURLOPT_HEADER => 0,
+
+                CURLOPT_URL => $url,
+
+                CURLOPT_FRESH_CONNECT => 1,
+
+                CURLOPT_RETURNTRANSFER => 1,
+
+                CURLOPT_FORBID_REUSE => 1,
+
+                //CURLOPT_TIMEOUT => 4,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_POSTFIELDS => http_build_query($post),
+                CURLOPT_CAINFO => __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt',
+
+            );
+
+            $ch = curl_init();
+
+            curl_setopt_array($ch, ($options + $defaults));
+
+            $result = curl_exec($ch);
+
+            Log::info(['result returned' => $result]);
+
+            if (!$result) {
+
+                Log::info(['request error' => curl_error($ch)]);
+
+                trigger_error(curl_error($ch));
+
             }
 
-            $payer = $statusData['payer'] ?? ['partyId' => 'N/A'];
+            curl_close($ch);
 
-            return [
-                "amount" => $statusData['amount'] ?? 0,
-                "clientNum" => $payer['partyId'],
-                "status" => $statusData['status'],
-                "reference" => $statusData['reference'] ?? $paiementRef
-            ];
-        } catch (GuzzleException $e) {
-            Log::error("Failed to get payment status", [
-                'reference' => $paiementRef,
-                'error' => $e->getMessage()
-            ]);
-            throw new RuntimeException("Failed to get payment status: " . $e->getMessage());
+            return $result;
+
+        }
+
+        $responseIdGet = $this->getIdAndMarchanName();
+        $nameMarchandExist = isset($responseIdGet->name);
+
+        try {
+
+            Log::info(['show phoneNumber' => $phoneNumber, "reseau" => $operatorName, "shop" => $this->id]);
+
+            $post = array("phoneNumber" => $phoneNumber, "amount" => $amount, "reseau" => $operatorName, "token" => $this->token, "shop" => $this->id, "first_name" => $fullname, "email" => $email, "callback_info" => $callback_info, "reference" => $custom_id, "otp" =>$otp);
+            $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/requesttopay/integration", $post);
+            $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
+
+            return $responseCurlPostPaiementData->reference;
+        } catch (\Throwable $th) {
+            echo "Request Not Send";
+        }
+    }
+
+    public function requestToPayWeb(float $amount, string $phoneNumber, string $operatorName, string $fullname, string $email, string $callback_info, string $custom_id, string $cancel_url="", string $return_url="")
+    {
+        function curl_post($url, array $post = null, array $options = array())
+        {
+            $defaults = array(
+                CURLOPT_POST => 1,
+                CURLOPT_HEADER => 0,
+                CURLOPT_URL => $url,
+                CURLOPT_FRESH_CONNECT => 1,
+                CURLOPT_RETURNTRANSFER => 1,
+                CURLOPT_FORBID_REUSE => 1,
+                CURLOPT_TIMEOUT => 4,
+                CURLOPT_POSTFIELDS => http_build_query($post),
+                CURLOPT_CAINFO => __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt',
+            );
+
+            $ch = curl_init();
+
+            curl_setopt_array($ch, ($options + $defaults));
+
+            if (!$result = curl_exec($ch)) {
+                trigger_error(curl_error($ch));
+            }
+
+            curl_close($ch);
+
+            return $result;
+
+        }
+
+        $responseIdGet = $this->getIdAndMarchanName();
+        $nameMarchandExist = isset($responseIdGet->name);
+        if ($nameMarchandExist == true) {
+
+            try {
+                $post = array("phoneNumber" => $phoneNumber, "amount" => $amount, "reseau" => $operatorName,
+                    "token" => $this->token, "shop" => $this->id, "first_name" => $fullname, "email" => $email,
+                    "callback_info" => $callback_info, "reference" => $custom_id, 'return_url' => $return_url,
+                    'cancel_url' => $cancel_url);
+                $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/requesttopay/integration", $post);
+                $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
+
+                if ($responseCurlPostPaiementData->status == "FAILED") {
+                    echo "Paramètres incorrects";
+                } else {
+                    return array(
+                        'payment_url' => $responseCurlPostPaiementData->payment_url,
+                        'reference' => $responseCurlPostPaiementData->reference,
+                        'order_id' => $responseCurlPostPaiementData->order_id
+                    );
+                }
+            } catch (\Throwable $th) {
+                echo "Request Not Send";
+            }
+        } else {
+            return false;
+        }
+    }
+
+    public function paiementCard(
+        float $amount,
+        string $phoneNumber,
+        string $typeCard,
+        string $firstName,
+        string $lastName,
+        string $email,
+        string $country,
+        string $address,
+        string $district,
+        string $currency,
+        string $callback_info,
+        string $custom_id
+    )
+    {
+        function curl_post($url, array $post = null, array $options = array())
+        {
+            $defaults = array(
+
+                CURLOPT_POST => 1,
+
+                CURLOPT_HEADER => 0,
+
+                CURLOPT_URL => $url,
+
+                CURLOPT_FRESH_CONNECT => 1,
+
+                CURLOPT_RETURNTRANSFER => 1,
+
+                CURLOPT_FORBID_REUSE => 1,
+
+                CURLOPT_TIMEOUT => 4,
+
+                CURLOPT_POSTFIELDS => http_build_query($post),
+                CURLOPT_CAINFO => __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt',
+
+            );
+
+            $ch = curl_init();
+
+            curl_setopt_array($ch, ($options + $defaults));
+
+            $result = curl_exec($ch);
+
+            if (!$result) {
+
+                trigger_error(curl_error($ch));
+
+            }
+
+            curl_close($ch);
+
+            return $result;
+        }
+
+        $responseIdGet = $this->getIdAndMarchanName();
+        $nameMarchandExist = isset($responseIdGet->name);
+        $systemCardPay = $responseIdGet->systemCardPay;
+
+        //        if ($nameMarchandExist == true) {
+            try {
+                $post = array(
+                    "phone" => $phoneNumber,
+                    "amount" => $amount,
+                    "reseau" => $typeCard,
+                    "token" => $this->token,
+                    "shop" => $this->id,
+                    "first_name" => $firstName,
+                    "last_name" => $lastName,
+                    "email" => $email,
+                    "country" => $country,
+                    "address1" => $address,
+                    "district" => $district,
+                    "currency" => $currency,
+                    "callback_info" => $callback_info,
+                    "reference" => $custom_id,
+                    "systemCardPay" => $systemCardPay,
+                );
+                $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/card/inittransact/integration", $post);
+                $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
+
+                /* echo $responseCurlPostPaiementData;
+
+                if ($responseCurlPostPaiementData->status == "FAILED") {
+                    echo "Une erreur s'est produite";
+                } */
+                if (isset($responseCurlPostPaiementData->url)) {
+                    $result = [
+                        'url' => $responseCurlPostPaiementData->url,
+                        'reference' => $responseCurlPostPaiementData->reference,
+                    ];
+                    return $result;
+                }
+                else {
+                    echo "Réponse inattendue de l'API";
+                }
+
+            }
+            catch (\Throwable $th) {
+                echo "Erreur inattendue : " . $th->getMessage();
+                echo "Request Not Send";
+            }
+//        }
+//        else {
+//            return false;
+//        }
+
+    }
+
+    public function getPaiementStatus($paiementRef)
+    {
+        try {
+            $curlGetPaiementWithReference = curl_init("https://api.feexpay.me/api/transactions/getrequesttopay/integration/$paiementRef");
+            curl_setopt($curlGetPaiementWithReference, CURLOPT_CAINFO, __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt');
+            curl_setopt($curlGetPaiementWithReference, CURLOPT_RETURNTRANSFER, true);
+            $responseCurlStatus = curl_exec($curlGetPaiementWithReference);
+            $statusData = json_decode($responseCurlStatus);
+            curl_close($curlGetPaiementWithReference);
+
+            //if (isset($statusData->status)) {
+            $payer = $statusData->payer;
+            $responseSendArray = array(
+                "amount"=>$statusData->amount,
+                "clientNum"=>$payer->partyId,
+                "status"=>$statusData->status,
+                "reference"=>$statusData->reference
+            );
+            return $responseSendArray;
+           /*  }
+            else {
+                echo "Réponse inattendue de l'API";
+            } */
+        }
+        catch (\Throwable $th) {
+            echo "Get Status Request Not Send";
         }
     }
 }
