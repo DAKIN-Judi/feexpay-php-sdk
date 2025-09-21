@@ -331,7 +331,9 @@ class FeexpayClass
             } */
         }
         catch (\Throwable $th) {
-            echo "Get Status Request Not Send";
+            echo "Get Status Request Not Send \n";
+            echo $th->getMessage() . " " . $th->getLine();
+            Log::info("From feexpay ", ["line" => $th->getLine(), " messages " => $th->getMessage()]);
         }
     }
 }
