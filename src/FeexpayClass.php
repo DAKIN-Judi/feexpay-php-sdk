@@ -317,11 +317,12 @@ class FeexpayClass
             curl_close($curlGetPaiementWithReference);
 
             //if (isset($statusData->status)) {
-            $responseSendArray = array(
-                "amount"=>$statusData->amount,
-                "status"=>$statusData->status,
-                "reference"=>$statusData->reference
-            );
+            $responseSendArray = [
+                "amount"    => optional($statusData)->amount,
+                "clientNum" => optional(optional($statusData)->payer)->partyId,
+                "status"    => optional($statusData)->status,
+                "reference" => optional($statusData)->reference,
+            ];
             return $responseSendArray;
            /*  }
             else {
