@@ -41,7 +41,7 @@ class FeexpayClass
         $error_callback_url = $this->error_callback_url;
 
         echo "
-        <script src='https://api.feexpay.me/feexpay-javascript-sdk/index.js'></script>
+        <script src='https://api-v2.feexpay.me/feexpay-javascript-sdk/index.js'></script>
         <script type='text/javascript'>
 
         FeexPayButton.init('$componentId',{
@@ -62,7 +62,7 @@ class FeexpayClass
     public function getIdAndMarchanName()
     {
         try {
-            $curl = curl_init("https://api.feexpay.me/api/shop/$this->id/get_shop");
+            $curl = curl_init("https://api-v2.feexpay.me/api/shop/$this->id/get_shop");
             curl_setopt($curl, CURLOPT_CAINFO, __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt');
             curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
             $responseCurl = curl_exec($curl);
@@ -129,7 +129,7 @@ class FeexpayClass
             Log::info(['show phoneNumber' => $phoneNumber, "reseau" => $operatorName, "shop" => $this->id]);
 
             $post = array("phoneNumber" => $phoneNumber, "amount" => $amount, "reseau" => $operatorName, "token" => $this->token, "shop" => $this->id, "first_name" => $fullname, "email" => $email, "callback_info" => $callback_info, "reference" => $custom_id, "otp" =>$otp);
-            $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/requesttopay/integration", $post);
+            $responseCurlPostPaiement = curl_post("https://api-v2.feexpay.me/api/transactions/requesttopay/integration", $post);
             $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
 
             return $responseCurlPostPaiementData->reference;
@@ -177,7 +177,7 @@ class FeexpayClass
                     "token" => $this->token, "shop" => $this->id, "first_name" => $fullname, "email" => $email,
                     "callback_info" => $callback_info, "reference" => $custom_id, 'return_url' => $return_url,
                     'cancel_url' => $cancel_url);
-                $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/requesttopay/integration", $post);
+                $responseCurlPostPaiement = curl_post("https://api-v2.feexpay.me/api/transactions/requesttopay/integration", $post);
                 $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
 
                 if ($responseCurlPostPaiementData->status == "FAILED") {
@@ -275,7 +275,7 @@ class FeexpayClass
                     "reference" => $custom_id,
                     "systemCardPay" => $systemCardPay,
                 );
-                $responseCurlPostPaiement = curl_post("https://api.feexpay.me/api/transactions/card/inittransact/integration", $post);
+                $responseCurlPostPaiement = curl_post("https://api-v2.feexpay.me/api/transactions/card/inittransact/integration", $post);
                 $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
 
                 /* echo $responseCurlPostPaiementData;
@@ -309,7 +309,7 @@ class FeexpayClass
     public function getPaiementStatus($paiementRef)
     {
         try {
-            $curlGetPaiementWithReference = curl_init("https://api.feexpay.me/api/transactions/getrequesttopay/integration/$paiementRef");
+            $curlGetPaiementWithReference = curl_init("https://api-v2.feexpay.me/api/transactions/getrequesttopay/integration/$paiementRef");
             curl_setopt($curlGetPaiementWithReference, CURLOPT_CAINFO, __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt');
             curl_setopt($curlGetPaiementWithReference, CURLOPT_RETURNTRANSFER, true);
             $responseCurlStatus = curl_exec($curlGetPaiementWithReference);
