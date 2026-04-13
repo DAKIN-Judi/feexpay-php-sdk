@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 namespace Feexpay\FeexpayPhp;
-use Illuminate\Support\Facades\Log;
 
 class FeexpayClass
 {
@@ -15,33 +14,26 @@ class FeexpayClass
      * @param $error_callback_url
      * @param $mode
      */
-    public $id;
-    public $token;
-    public $callback_url;
-    public $error_callback_url;
-    public $mode;
-
-
-
-    public function __construct($id,$token,$callback_url,$mode='LIVE', $error_callback_url = '')
+    private $BASE_URL = "https://api-v2.feexpay.me/api";
+    public function __construct($id, $token, $callback_url, $mode = 'LIVE', $error_callback_url = '')
     {
-        // constructor body
         $this->id = $id;
         $this->token = $token;
         $this->callback_url = $callback_url;
         $this->error_callback_url = $error_callback_url;
         $this->mode = $mode;
-
     }
 
-    public function init($amount, $componentId, $use_custom_button = false, $custom_button_id = "",  $description = "", $callback_info=""){
+    public function init($amount, $componentId, $use_custom_button = false, $custom_button_id = "", $description = "", $callback_info = "")
+    {
         $token = $this->token;
         $id = $this->id;
         $callback_url = $this->callback_url;
         $error_callback_url = $this->error_callback_url;
+        $mode = $this->mode;
 
         echo "
-        <script src='https://api-v2.feexpay.me/feexpay-javascript-sdk/index.js'></script>
+        <script src='$this->BASE_URL/feexpay-javascript-sdk/index.js'></script>
         <script type='text/javascript'>
 
         FeexPayButton.init('$componentId',{
@@ -49,7 +41,7 @@ class FeexpayClass
              amount:$amount,
              token:'$token',
              callback_url:'$callback_url',
-             mode: 'LIVE',
+             mode: '$mode',
              custom_button: '$use_custom_button',
             id_custom_button: '$custom_button_id',
             description: '$description',
@@ -59,10 +51,44 @@ class FeexpayClass
         </script>";
     }
 
+   
+    private function curl_post(string $url, array $post = [], array $options = []): string|false
+    {
+        $defaults = [
+            CURLOPT_POST           => 1,
+            CURLOPT_HEADER         => 0,
+            CURLOPT_URL            => $url,
+            CURLOPT_FRESH_CONNECT  => 1,
+            CURLOPT_RETURNTRANSFER => 1,
+            CURLOPT_FORBID_REUSE   => 1,
+            CURLOPT_POSTFIELDS     => http_build_query($post),
+            CURLOPT_CAINFO         => __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt',
+            CURLOPT_HTTPHEADER     => [
+                'Accept: application/json',
+                'Content-Type: application/x-www-form-urlencoded',
+                'Authorization: Bearer ' . $this->token
+            ],
+        ];
+
+        $ch = curl_init();
+        curl_setopt_array($ch, $options + $defaults);
+
+
+
+        $result = curl_exec($ch);
+
+        
+        if ($result === false) {
+            trigger_error(curl_error($ch));
+        }
+        curl_close($ch);
+        return $result;
+    }
+
     public function getIdAndMarchanName()
     {
         try {
-            $curl = curl_init("https://api-v2.feexpay.me/api/shop/$this->id/get_shop");
+            $curl = curl_init("$this->BASE_URL/shop/$this->id/get_shop");
             curl_setopt($curl, CURLOPT_CAINFO, __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt');
             curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
             $responseCurl = curl_exec($curl);
@@ -74,121 +100,74 @@ class FeexpayClass
         }
     }
 
-    public function paiementLocal(float $amount, string $phoneNumber, string $operatorName, string $fullname, string $email, string $callback_info, string $custom_id, string $otp="")
+    public function paiementLocal(float $amount, string $phoneNumber, string $operatorName, string $fullname, string $email, string $callback_info, string $custom_id, string $otp = "")
     {
-        function curl_post($url, array $post = null, array $options = array())
-        {
-            $defaults = array(
-
-                CURLOPT_POST => 1,
-
-                CURLOPT_HEADER => 0,
-
-                CURLOPT_URL => $url,
-
-                CURLOPT_FRESH_CONNECT => 1,
-
-                CURLOPT_RETURNTRANSFER => 1,
-
-                CURLOPT_FORBID_REUSE => 1,
-
-                //CURLOPT_TIMEOUT => 4,
-                CURLOPT_SSL_VERIFYPEER => false,
-                CURLOPT_POSTFIELDS => http_build_query($post),
-                CURLOPT_CAINFO => __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt',
-
-            );
-
-            $ch = curl_init();
-
-            curl_setopt_array($ch, ($options + $defaults));
-
-            $result = curl_exec($ch);
-
-            Log::info(['result returned' => $result]);
-
-            if (!$result) {
-
-                Log::info(['request error' => curl_error($ch)]);
-
-                trigger_error(curl_error($ch));
-
-            }
-
-            curl_close($ch);
-
-            return $result;
-
-        }
-
         $responseIdGet = $this->getIdAndMarchanName();
         $nameMarchandExist = isset($responseIdGet->name);
-
         try {
+            $post = array(
+                "phoneNumber"   => $phoneNumber,
+                "amount"        => $amount,
+                "reseau"        => $operatorName,
+                "shop"          => $this->id,
+                "first_name"    => $fullname,
+                "email"         => $email,
+                "callback_info" => $callback_info,
+                "reference"     => $custom_id,
+                "otp"           => $otp
+            );
 
-            Log::info(['show phoneNumber' => $phoneNumber, "reseau" => $operatorName, "shop" => $this->id]);
-
-            $post = array("phoneNumber" => $phoneNumber, "amount" => $amount, "reseau" => $operatorName, "token" => $this->token, "shop" => $this->id, "first_name" => $fullname, "email" => $email, "callback_info" => $callback_info, "reference" => $custom_id, "otp" =>$otp);
-            $responseCurlPostPaiement = curl_post("https://api-v2.feexpay.me/api/transactions/requesttopay/integration", $post);
+            $responseCurlPostPaiement = $this->curl_post("$this->BASE_URL/transactions/requesttopay/integration", $post);
             $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
-
+            if (!$responseCurlPostPaiementData || !isset($responseCurlPostPaiementData->reference)) {
+                error_log("Erreur API FeexPay : " . $responseCurlPostPaiement);
+                return false;
+            }
             return $responseCurlPostPaiementData->reference;
         } catch (\Throwable $th) {
-            echo "Request Not Send";
+            error_log("Erreur paiementLocal: " . $th->getMessage());
+            return false;
         }
     }
 
-    public function requestToPayWeb(float $amount, string $phoneNumber, string $operatorName, string $fullname, string $email, string $callback_info, string $custom_id, string $cancel_url="", string $return_url="")
+    public function requestToPayWeb(float $amount, string $phoneNumber, string $operatorName, string $fullname, string $email, string $callback_info, string $custom_id, string $cancel_url = "https://feexpay.me/en", string $return_url = "https://feexpay.me/en")
     {
-        function curl_post($url, array $post = null, array $options = array())
-        {
-            $defaults = array(
-                CURLOPT_POST => 1,
-                CURLOPT_HEADER => 0,
-                CURLOPT_URL => $url,
-                CURLOPT_FRESH_CONNECT => 1,
-                CURLOPT_RETURNTRANSFER => 1,
-                CURLOPT_FORBID_REUSE => 1,
-                CURLOPT_TIMEOUT => 4,
-                CURLOPT_POSTFIELDS => http_build_query($post),
-                CURLOPT_CAINFO => __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt',
-            );
-
-            $ch = curl_init();
-
-            curl_setopt_array($ch, ($options + $defaults));
-
-            if (!$result = curl_exec($ch)) {
-                trigger_error(curl_error($ch));
-            }
-
-            curl_close($ch);
-
-            return $result;
-
-        }
-
         $responseIdGet = $this->getIdAndMarchanName();
         $nameMarchandExist = isset($responseIdGet->name);
         if ($nameMarchandExist == true) {
-
             try {
-                $post = array("phoneNumber" => $phoneNumber, "amount" => $amount, "reseau" => $operatorName,
-                    "token" => $this->token, "shop" => $this->id, "first_name" => $fullname, "email" => $email,
-                    "callback_info" => $callback_info, "reference" => $custom_id, 'return_url' => $return_url,
-                    'cancel_url' => $cancel_url);
-                $responseCurlPostPaiement = curl_post("https://api-v2.feexpay.me/api/transactions/requesttopay/integration", $post);
+                $post = array(
+                    "phoneNumber"   => $phoneNumber,
+                    "amount"        => $amount,
+                    "reseau"        => $operatorName,
+                    "token"         => $this->token,
+                    "shop"          => $this->id,
+                    "first_name"    => $fullname,
+                    "email"         => $email,
+                    "callback_info" => $callback_info,
+                    "reference"     => $custom_id,
+                    'return_url'    => $return_url,
+                    'cancel_url'    => $cancel_url
+                );
+               
+                $responseCurlPostPaiement = $this->curl_post("$this->BASE_URL/transactions/requesttopay/integration", $post);
                 $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
 
-                if ($responseCurlPostPaiementData->status == "FAILED") {
-                    echo "Paramètres incorrects";
-                } else {
-                    return array(
-                        'payment_url' => $responseCurlPostPaiementData->payment_url,
-                        'reference' => $responseCurlPostPaiementData->reference,
-                        'order_id' => $responseCurlPostPaiementData->order_id
-                    );
+                if (!$responseCurlPostPaiementData) {
+                    echo "Réponse invalide de l'API\n";
+                    return false;
                 }
+
+                if (isset($responseCurlPostPaiementData->status) && $responseCurlPostPaiementData->status == "FAILED") {
+                    echo "Paramètres incorrects\n";
+                    return false;
+                }
+
+                return array(
+                    'payment_url' => $responseCurlPostPaiementData->payment_url ?? '',
+                    'reference'   => $responseCurlPostPaiementData->reference   ?? '',
+                    'order_id'    => $responseCurlPostPaiementData->order_id     ?? '',
+                );
             } catch (\Throwable $th) {
                 echo "Request Not Send";
             }
@@ -210,129 +189,85 @@ class FeexpayClass
         string $currency,
         string $callback_info,
         string $custom_id
-    )
-    {
-        function curl_post($url, array $post = null, array $options = array())
-        {
-            $defaults = array(
-
-                CURLOPT_POST => 1,
-
-                CURLOPT_HEADER => 0,
-
-                CURLOPT_URL => $url,
-
-                CURLOPT_FRESH_CONNECT => 1,
-
-                CURLOPT_RETURNTRANSFER => 1,
-
-                CURLOPT_FORBID_REUSE => 1,
-
-                CURLOPT_TIMEOUT => 4,
-
-                CURLOPT_POSTFIELDS => http_build_query($post),
-                CURLOPT_CAINFO => __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt',
-
-            );
-
-            $ch = curl_init();
-
-            curl_setopt_array($ch, ($options + $defaults));
-
-            $result = curl_exec($ch);
-
-            if (!$result) {
-
-                trigger_error(curl_error($ch));
-
-            }
-
-            curl_close($ch);
-
-            return $result;
-        }
-
+    ) {
         $responseIdGet = $this->getIdAndMarchanName();
         $nameMarchandExist = isset($responseIdGet->name);
         $systemCardPay = $responseIdGet->systemCardPay;
 
-        //        if ($nameMarchandExist == true) {
-            try {
-                $post = array(
-                    "phone" => $phoneNumber,
-                    "amount" => $amount,
-                    "reseau" => $typeCard,
-                    "token" => $this->token,
-                    "shop" => $this->id,
-                    "first_name" => $firstName,
-                    "last_name" => $lastName,
-                    "email" => $email,
-                    "country" => $country,
-                    "address1" => $address,
-                    "district" => $district,
-                    "currency" => $currency,
-                    "callback_info" => $callback_info,
-                    "reference" => $custom_id,
-                    "systemCardPay" => $systemCardPay,
-                );
-                $responseCurlPostPaiement = curl_post("https://api-v2.feexpay.me/api/transactions/card/inittransact/integration", $post);
-                $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
+        try {
+            $post = array(
+                "phone"         => $phoneNumber,
+                "amount"        => $amount,
+                "reseau"        => $typeCard,
+                "token"         => $this->token,
+                "shop"          => $this->id,
+                "first_name"    => $firstName,
+                "last_name"     => $lastName,
+                "email"         => $email,
+                "country"       => $country,
+                "address1"      => $address,
+                "district"      => $district,
+                "currency"      => $currency,
+                "callback_info" => $callback_info,
+                "reference"     => $custom_id,
+                "systemCardPay" => $systemCardPay,
+            );
+            
+            $responseCurlPostPaiement = $this->curl_post("/transactions/card/inittransact/integration", $post);
+            $responseCurlPostPaiementData = json_decode($responseCurlPostPaiement);
 
-                /* echo $responseCurlPostPaiementData;
-
-                if ($responseCurlPostPaiementData->status == "FAILED") {
-                    echo "Une erreur s'est produite";
-                } */
-                if (isset($responseCurlPostPaiementData->url)) {
-                    $result = [
-                        'url' => $responseCurlPostPaiementData->url,
-                        'reference' => $responseCurlPostPaiementData->reference,
-                    ];
-                    return $result;
-                }
-                else {
-                    echo "Réponse inattendue de l'API";
-                }
-
+            if (isset($responseCurlPostPaiementData->url)) {
+                return [
+                    'url'       => $responseCurlPostPaiementData->url,
+                    'reference' => $responseCurlPostPaiementData->reference,
+                ];
+            } else {
+                echo "Réponse inattendue de l'API";
             }
-            catch (\Throwable $th) {
-                echo "Erreur inattendue : " . $th->getMessage();
-                echo "Request Not Send";
-            }
-//        }
-//        else {
-//            return false;
-//        }
-
+        } catch (\Throwable $th) {
+            echo "Erreur inattendue : " . $th->getMessage();
+            echo "Request Not Send";
+        }
     }
 
     public function getPaiementStatus($paiementRef)
     {
+            if (!$paiementRef) {
+                echo "REFERENCE_INVALID";
+                return false;
+            }
+
         try {
-            $curlGetPaiementWithReference = curl_init("https://api-v2.feexpay.me/api/transactions/getrequesttopay/integration/$paiementRef");
+            $curlGetPaiementWithReference = curl_init("$this->BASE_URL/transactions/public/single/status/$paiementRef");
             curl_setopt($curlGetPaiementWithReference, CURLOPT_CAINFO, __DIR__ . DIRECTORY_SEPARATOR . 'certificats/IXRCERT.crt');
             curl_setopt($curlGetPaiementWithReference, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($curlGetPaiementWithReference, CURLOPT_HTTPHEADER, [
+                'Accept: application/json',
+                'Authorization: Bearer ' . $this->token,
+            ]);
+            
             $responseCurlStatus = curl_exec($curlGetPaiementWithReference);
             $statusData = json_decode($responseCurlStatus);
             curl_close($curlGetPaiementWithReference);
 
-            //if (isset($statusData->status)) {
-            $responseSendArray = [
-                "amount"    => optional($statusData)->amount,
-                "clientNum" => optional(optional($statusData)->payer)->partyId,
-                "status"    => optional($statusData)->status,
-                "reference" => optional($statusData)->reference,
-            ];
+            $number='';
+
+            if ($statusData->phoneNumber) {
+                $number = $statusData->phoneNumber;
+            } elseif ($statusData->phone_number) {
+                $number = $statusData->phone_number;
+            }
+
+            $responseSendArray = array(
+                "amount"    => $statusData->amount,
+                
+                "clientNum" => $number, 
+                "status"    => $statusData->status,
+                "reference" => $statusData->reference
+            );
             return $responseSendArray;
-           /*  }
-            else {
-                echo "Réponse inattendue de l'API";
-            } */
-        }
-        catch (\Throwable $th) {
-            echo "Get Status Request Not Send \n";
-            echo $th->getMessage() . " " . $th->getLine();
-            Log::info("From feexpay ", ["line" => $th->getLine(), " messages " => $th->getMessage()]);
+        } catch (\Throwable $th) {
+            echo "Get Status Request Not Send";
         }
     }
 }
